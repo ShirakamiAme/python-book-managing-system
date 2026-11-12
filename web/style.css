@@ -1,0 +1,947 @@
+/* ============================================================
+   图书管理系统 —— 样式表
+
+   配色采用 CSS 变量 + data-theme 切换，提供两套浅色主题：
+     blue  浅蓝（默认，偏柔和的天蓝）
+     green 浅绿（偏清新的薄荷绿）
+
+   全局基调为浅色：白色卡片 + 极浅背景 + 主色仅用于强调元素。
+   深色只保留在标题文字上（保证对比度），不再使用深色大面积色块。
+   ============================================================ */
+
+/* ---------------- 主题：浅蓝（默认） ---------------- */
+
+:root {
+  --c-accent: #7FC8EC;          /* 主色：浅蓝，用于边框、标签、选中态 */
+  --c-accent-deep: #2A80AE;     /* 加深一档：按钮底色、可点击文字（白字对比达标） */
+  --c-accent-soft: #F0F9FD;     /* 极浅底色：悬停、条形背景 */
+  --c-accent-dark: #17405C;     /* 深色：标题文字 */
+
+  --c-tint: #E3F2FA;            /* 浅色块：统计卡片、表头 */
+  --c-bg: #F7FBFD;              /* 页面底色 */
+  --c-card: #FFFFFF;
+
+  --c-text: #1F2937;
+  --c-text-soft: #64748B;
+  --c-text-dim: #94A3B8;
+
+  --c-line: #DCEBF4;
+  --c-line-soft: #EEF5FA;
+
+  --c-danger: #DC5A56;
+  --c-danger-bg: #FDEEED;
+  --c-danger-soft: #FBDFDD;
+  --c-success: #2E9B6B;
+  --c-success-bg: #E9F7F0;
+
+  --c-shadow-sm: 0 1px 2px rgba(42, 128, 174, .06);
+  --c-shadow: 0 4px 16px rgba(42, 128, 174, .09);
+  --c-shadow-lg: 0 18px 48px rgba(23, 64, 92, .16);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  /* 液态玻璃内部色团。存 RGB 分量，便于在 rgba() 里单独控制透明度 */
+  --glass-rgb-1: 127, 200, 236;
+  --glass-rgb-2: 168, 224, 246;
+  --glass-rgb-3: 206, 238, 253;
+}
+
+/* ---------------- 主题：浅绿 ---------------- */
+
+[data-theme="green"] {
+  --c-accent: #7DD3A8;
+  --c-accent-deep: #2E8B62;
+  --c-accent-soft: #F1FBF6;
+  --c-accent-dark: #14503A;
+
+  --c-tint: #E4F6EC;
+  --c-bg: #F7FCF9;
+
+  --c-line: #D8EEE2;
+  --c-line-soft: #EDF8F2;
+
+  --c-shadow-sm: 0 1px 2px rgba(46, 139, 98, .06);
+  --c-shadow: 0 4px 16px rgba(46, 139, 98, .09);
+  --c-shadow-lg: 0 18px 48px rgba(20, 80, 58, .16);
+
+  --glass-rgb-1: 125, 211, 168;
+  --glass-rgb-2: 168, 226, 198;
+  --glass-rgb-3: 208, 242, 224;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-text);
+  background: var(--c-bg);
+  -webkit-font-smoothing: antialiased;
+  transition: background .25s ease;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================ 顶部栏（液态玻璃） ============================ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 30px;
+  /* 裁掉溢出的光斑，让玻璃边缘保持干净的直边 */
+  overflow: hidden;
+
+  /* 玻璃本体：半透明白 + 背后模糊 + 提饱和。
+     顶栏设为 sticky，页面滚动时表格会从下方经过，
+     backdrop-filter 才有东西可模糊，磨砂感才出得来。 */
+  background: rgba(255, 255, 255, .52);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+  border-bottom: 1px solid rgba(255, 255, 255, .8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),      /* 上缘高光，玻璃的"厚度" */
+    inset 0 -1px 0 rgba(42, 128, 174, .08),
+    0 6px 24px rgba(42, 128, 174, .07);
+}
+
+/* 顶部主色细线，压在玻璃之上做品牌色 */
+.topbar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2;
+  background: linear-gradient(90deg, var(--c-accent), var(--c-accent-deep));
+  transition: background .3s ease;
+}
+
+/* 玻璃内部流动的色团层。
+   超出边界 60% 让色团有活动余地，多出的部分由 .topbar 的 overflow 裁掉。
+   整层只做一次模糊，比给每个色团单独 blur 省得多。 */
+.liquid-glass {
+  position: absolute;
+  inset: -60% -20%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(26px) saturate(150%);
+  opacity: .92;
+  will-change: transform, opacity;
+}
+
+.blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.blob-a {
+  width: 420px;
+  height: 420px;
+  top: 8%;
+  left: 4%;
+  background: radial-gradient(circle at 35% 35%,
+              rgba(var(--glass-rgb-1), .9),
+              rgba(var(--glass-rgb-1), 0) 68%);
+  animation: drift-a 17s ease-in-out infinite alternate;
+}
+
+.blob-b {
+  width: 380px;
+  height: 380px;
+  top: -6%;
+  left: 46%;
+  background: radial-gradient(circle at 45% 55%,
+              rgba(var(--glass-rgb-2), .85),
+              rgba(var(--glass-rgb-2), 0) 70%);
+  animation: drift-b 21s ease-in-out infinite alternate;
+}
+
+.blob-c {
+  width: 460px;
+  height: 460px;
+  top: 14%;
+  left: 74%;
+  background: radial-gradient(circle at 55% 45%,
+              rgba(var(--glass-rgb-3), .95),
+              rgba(var(--glass-rgb-3), 0) 66%);
+  animation: drift-c 25s ease-in-out infinite alternate;
+}
+
+/* 玻璃表面的一道斜向反光，隔一阵缓慢扫过 */
+.sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 28%,
+    rgba(255, 255, 255, .55) 47%,
+    rgba(255, 255, 255, 0) 66%
+  );
+  animation: sheen-run 11s ease-in-out infinite;
+}
+
+@keyframes drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(90px, -30px, 0) scale(1.18); }
+}
+
+@keyframes drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1.06); }
+  100% { transform: translate3d(-120px, 34px, 0) scale(.92); }
+}
+
+@keyframes drift-c {
+  0%   { transform: translate3d(0, 0, 0) scale(.95); }
+  100% { transform: translate3d(-70px, 26px, 0) scale(1.14); }
+}
+
+@keyframes sheen-run {
+  0%, 70% { transform: translateX(-95%); opacity: 0; }
+  80%     { opacity: .85; }
+  100%    { transform: translateX(95%); opacity: 0; }
+}
+
+/* 内容层压在玻璃之上 */
+.topbar-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+}
+
+/* ---- 两种 header 状态互切时的液态过渡 ----
+   切换主题时，玻璃整层放大、模糊加重再回弹，同时反光扫过一次，
+   这样色团颜色的瞬间变化就被"搅动"盖住了，不会显得突兀。
+
+   具体动画由 app.js 的 pulseLiquid() 用 Web Animations API 直接驱动。
+   这里刻意不写 CSS 类与 @keyframes：类切换依赖 Vue 的异步渲染，
+   连续快速切换时同一帧内 false→true 会被合并，动画不会重播。 */
+
+/* 关闭动效偏好时常驻的漂移一并静止（一次性动画由 JS 侧判断跳过） */
+@media (prefers-reduced-motion: reduce) {
+  .blob,
+  .sheen {
+    animation: none !important;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  border-radius: 13px;
+  /* 压在玻璃上的一小块磨砂片 */
+  background: rgba(255, 255, 255, .62);
+  border: 1px solid rgba(255, 255, 255, .9);
+  transition: background .25s ease;
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--c-accent-dark);
+}
+
+.brand-text p {
+  margin: 1px 0 0;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--c-text-dim);
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.stat-group {
+  display: flex;
+  gap: 10px;
+}
+
+.stat {
+  min-width: 96px;
+  padding: 8px 16px;
+  text-align: center;
+  border-radius: var(--radius);
+  /* 半透明白，透出下层流动的色团，玻璃感的关键之一 */
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(255, 255, 255, .85);
+  transition: background .2s, border-color .2s;
+}
+
+.stat:hover {
+  background: rgba(255, 255, 255, .78);
+  border-color: var(--c-accent);
+}
+
+.stat b {
+  display: block;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--c-accent-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat span {
+  font-size: 11px;
+  color: var(--c-text-soft);
+  letter-spacing: .5px;
+}
+
+/* ---------------- 主题切换 ---------------- */
+
+.theme-switch {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: var(--c-accent-soft);
+  border: 1px solid var(--c-line);
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+
+.swatch:hover { transform: scale(1.12); }
+
+.swatch.blue { background: #7FC8EC; }
+.swatch.green { background: #7DD3A8; }
+
+.swatch.active {
+  border-color: var(--c-card);
+  box-shadow: 0 0 0 2px var(--c-accent-deep);
+}
+
+/* ============================ 标签页 ============================ */
+
+.tabs {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding: 0 30px;
+  background: var(--c-card);
+  border-bottom: 1px solid var(--c-line);
+}
+
+/* 滑动的液块：位置与宽度由 JS 依据当前页签实时赋值，
+   两处都带缓动，切换时看起来像一滴液体被拽到新位置。 */
+.tab-liquid {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--c-accent), var(--c-accent-deep));
+  box-shadow: 0 0 12px rgba(var(--glass-rgb-1), .85);
+  transition: transform .42s cubic-bezier(.34, 1.3, .42, 1),
+              width .42s cubic-bezier(.34, 1.3, .42, 1);
+  pointer-events: none;
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  padding: 13px 22px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--c-text-soft);
+  cursor: pointer;
+  transition: color .18s;
+}
+
+.tab:hover { color: var(--c-accent-deep); }
+
+.tab.active {
+  color: var(--c-accent-deep);
+  font-weight: 600;
+}
+
+/* ============================ 主体（视图切换） ============================ */
+
+.view-area {
+  position: relative;
+  flex: 1;
+  padding: 22px 30px 34px;
+}
+
+/* 版式参照系：正在离开的视图改为绝对定位、脱离文档流，
+   这样进出两层同时存在时不会把下方内容顶来顶去 */
+.view-stack {
+  position: relative;
+}
+
+/* 液体光层：切换时横扫而过，把内容交换的瞬间盖住 */
+.liquid-sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 25%,
+    rgba(var(--glass-rgb-2), .5) 48%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  filter: blur(26px);
+}
+
+.liquid-sweep.active {
+  /* 保留给无 JS 动画的降级路径；实际播放由 runSweep() 通过 WAAPI 驱动 */
+  animation: sweep-across .62s cubic-bezier(.4, 0, .2, 1);
+}
+
+@keyframes sweep-across {
+  0%   { opacity: 0; transform: translateX(-70%); }
+  30%  { opacity: .9; }
+  100% { opacity: 0; transform: translateX(70%); }
+}
+
+/* 视图进出：模糊 + 位移 + 轻微缩放，
+   做出"被推开又浮上来"的液态观感，而不是生硬的淡入淡出 */
+.liquid-view-enter-active {
+  transition: opacity .38s ease,
+              transform .46s cubic-bezier(.22, 1.15, .36, 1),
+              filter .42s ease;
+}
+
+.liquid-view-leave-active {
+  transition: opacity .26s ease,
+              transform .3s ease,
+              filter .26s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.liquid-view-enter-from {
+  opacity: 0;
+  transform: translateY(22px) scale(.985);
+  filter: blur(12px);
+}
+
+.liquid-view-leave-to {
+  opacity: 0;
+  transform: translateY(-14px) scale(.995);
+  filter: blur(8px);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.flex-1 { flex: 1; }
+
+/* ============================ 表单控件 ============================ */
+
+input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--c-text);
+  background: var(--c-card);
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+}
+
+input:hover { border-color: var(--c-accent); }
+
+input:focus {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  width: 320px;
+  height: 38px;
+  padding: 0 12px;
+  gap: 8px;
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  transition: border-color .18s, box-shadow .18s;
+}
+
+.search-box:focus-within {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+
+.search-box input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none !important;
+}
+
+.search-icon {
+  font-size: 13px;
+  opacity: .5;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--c-text-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--c-accent-deep);
+  cursor: pointer;
+}
+
+/* ============================ 按钮 ============================ */
+
+.btn {
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .18s, border-color .18s, color .18s,
+              transform .12s, box-shadow .18s;
+}
+
+.btn.sm {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+.btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--c-accent-deep);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(42, 128, 174, .22);
+}
+
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(.92);
+  box-shadow: 0 4px 14px rgba(42, 128, 174, .28);
+}
+
+.btn.ghost {
+  background: var(--c-card);
+  color: var(--c-accent-deep);
+  border-color: var(--c-line);
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: var(--c-accent-soft);
+  border-color: var(--c-accent);
+}
+
+/* ============================ 表格卡片 ============================ */
+
+.card {
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--c-shadow-sm);
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  color: var(--c-accent-deep);
+  background: var(--c-accent-soft);
+  border-bottom: 1px solid var(--c-line);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-line-soft);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+tbody tr { transition: background .15s; }
+
+tbody tr:hover { background: var(--c-accent-soft); }
+
+.col-id { width: 62px; }
+.col-isbn { width: 160px; }
+.col-author { width: 130px; }
+.col-publisher { width: 170px; }
+.col-category { width: 120px; }
+.col-price { width: 96px; }
+.col-stock { width: 78px; }
+.col-ops { width: 152px; }
+.col-borrower { width: 120px; }
+.col-date { width: 118px; }
+.col-status { width: 100px; }
+
+.mono {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  color: var(--c-text-soft);
+}
+
+.dim { color: var(--c-text-dim); }
+
+.strong {
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.price {
+  font-variant-numeric: tabular-nums;
+  color: var(--c-accent-deep);
+  font-weight: 600;
+}
+
+.stock-num {
+  display: inline-block;
+  min-width: 26px;
+  padding: 1px 8px;
+  text-align: center;
+  border-radius: 6px;
+  background: var(--c-tint);
+  color: var(--c-accent-deep);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops { white-space: nowrap; }
+
+.state {
+  padding: 56px 0 !important;
+  text-align: center;
+  color: var(--c-text-dim);
+  font-size: 13.5px;
+}
+
+.state-icon {
+  font-size: 30px;
+  margin-bottom: 6px;
+  opacity: .65;
+}
+
+/* ============================ 标签 ============================ */
+
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  line-height: 1.7;
+  font-weight: 500;
+}
+
+.tag.danger {
+  background: var(--c-danger-bg);
+  color: var(--c-danger);
+}
+
+.tag.success {
+  background: var(--c-success-bg);
+  color: var(--c-success);
+}
+
+.tag.info {
+  background: var(--c-tint);
+  color: var(--c-accent-deep);
+}
+
+/* ============================ 文字按钮 ============================ */
+
+.link {
+  padding: 3px 7px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--c-accent-deep);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.link:hover { background: var(--c-accent-soft); }
+
+.link.danger { color: var(--c-danger); }
+
+.link.danger:hover { background: var(--c-danger-bg); }
+
+/* ============================ 分页 ============================ */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.pager-info {
+  font-size: 13px;
+  color: var(--c-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================ 弹窗 ============================ */
+
+.mask {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(23, 64, 92, .22);
+  backdrop-filter: blur(3px);
+  z-index: 60;
+}
+
+.dialog {
+  width: 640px;
+  max-width: 100%;
+  max-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  background: var(--c-card);
+  border-radius: 16px;
+  box-shadow: var(--c-shadow-lg);
+  animation: pop .2s ease;
+}
+
+.dialog.narrow { width: 430px; }
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--c-line-soft);
+}
+
+.dialog-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-accent-dark);
+}
+
+.close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-size: 14px;
+  color: var(--c-text-dim);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.close:hover {
+  background: var(--c-accent-soft);
+  color: var(--c-accent-deep);
+}
+
+.dialog-body {
+  padding: 20px 24px;
+  overflow: auto;
+}
+
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px 20px;
+  border-top: 1px solid var(--c-line-soft);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span {
+  font-size: 12.5px;
+  color: var(--c-text-soft);
+}
+
+.field > span b {
+  color: var(--c-danger);
+  font-weight: 400;
+}
+
+.field input { width: 100%; }
+
+.book-name {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--c-tint);
+  color: var(--c-accent-dark);
+  font-weight: 600;
+}
+
+.hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--c-text-dim);
+  line-height: 1.7;
+}
+
+/* ============================ 提示条 ============================ */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%);
+  padding: 11px 24px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  color: #fff;
+  background: var(--c-accent-deep);
+  box-shadow: var(--c-shadow-lg);
+  z-index: 90;
+}
+
+.toast.success { background: var(--c-success); }
+.toast.error { background: var(--c-danger); }
+
+/* ============================ 过渡动画 ============================ */
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity .18s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.rise-enter-active,
+.rise-leave-active {
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.rise-enter-from,
+.rise-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 14px);
+}
+
+/* ============================ 窄屏适配 ============================ */
+
+@media (max-width: 980px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .stat-group { flex: 1; }
+  .stat { flex: 1; min-width: 0; }
+  main, .tabs { padding-left: 16px; padding-right: 16px; }
+  .search-box { width: 100%; }
+  .grid { grid-template-columns: 1fr; }
+}

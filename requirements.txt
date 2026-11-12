@@ -1,0 +1,21 @@
+# 图书管理系统 —— 依赖清单
+# 安装：pip install --no-cache-dir -r requirements.txt
+# 版本组合已在 Python 3.14.7 下实测通过
+
+# Web 层：RESTful API 服务
+fastapi==0.162.5
+uvicorn==0.54.0
+starlette==1.10.0
+
+# 数据层：ORM 与数据校验
+sqlmodel==0.0.49
+SQLAlchemy==2.1.8
+pydantic==2.14.3
+
+# 桌面外壳：把网页装进原生窗口
+pywebview==6.2.1
+pythonnet==3.2.1
+
+# 测试
+pytest==9.2.0
+httpx2==2.16.0

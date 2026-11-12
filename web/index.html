@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图书管理系统</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Vue 挂载点：内容由 app.js 中的模板渲染 -->
+<div id="app"></div>
+
+<!-- ==========================================================
+     模板放在 type="text/x-template" 的 script 中。
+     浏览器不会把这段内容当作 HTML 解析，模板里的 @click、:class
+     等 Vue 指令写法得以原样保留（直接写在 body 里会被 HTML
+     解析器丢弃或改写属性名）。
+     ========================================================== -->
+<script type="text/x-template" id="app-template">
+
+  <!-- 顶部栏：液态玻璃 -->
+  <header class="topbar">
+    <!-- 玻璃内部的流动色团，纯装饰，不接收点击 -->
+    <div class="liquid-glass" aria-hidden="true">
+      <i class="blob blob-a"></i>
+      <i class="blob blob-b"></i>
+      <i class="blob blob-c"></i>
+      <i class="sheen"></i>
+    </div>
+
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-logo">📖</div>
+        <div class="brand-text">
+          <h1>图书管理系统</h1>
+          <p>Book Management System</p>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="stat-group">
+          <div class="stat">
+            <b>{{ stats.total_books }}</b>
+            <span>图书种类</span>
+          </div>
+          <div class="stat">
+            <b>{{ stats.total_stock }}</b>
+            <span>在库册数</span>
+          </div>
+          <div class="stat">
+            <b>{{ stats.borrowing }}</b>
+            <span>在借记录</span>
+          </div>
+        </div>
+
+        <!-- 配色切换：浅蓝 / 浅绿 -->
+        <div class="theme-switch">
+          <button class="swatch blue" :class="{ active: theme === 'blue' }"
+                  title="浅蓝" @click="setTheme('blue')"></button>
+          <button class="swatch green" :class="{ active: theme === 'green' }"
+                  title="浅绿" @click="setTheme('green')"></button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 标签页：底部的液块会滑动到当前页签下 -->
+  <nav class="tabs">
+    <span class="tab-liquid"
+          :style="{ transform: 'translateX(' + indicator.left + 'px)', width: indicator.width + 'px' }"
+          aria-hidden="true"></span>
+
+    <button class="tab" :class="{ active: view === 'books' }"
+            @click="switchView('books')">图书管理</button>
+    <button class="tab" :class="{ active: view === 'borrows' }"
+            @click="switchView('borrows')">借阅记录</button>
+  </nav>
+
+  <main class="view-area">
+    <!-- 切换时横扫而过的液体光层，掩盖内容交换的瞬间 -->
+    <div class="liquid-sweep" aria-hidden="true"></div>
+
+    <div class="view-stack">
+    <!-- 图书管理 -->
+    <transition name="liquid-view">
+    <section v-if="view === 'books'" key="books">
+      <div class="toolbar">
+        <label class="search-box">
+          <span class="search-icon">🔍</span>
+          <input v-model.trim="keyword" @keyup.enter="searchBooks"
+                 placeholder="搜索书名 / 作者 / ISBN">
+        </label>
+        <button class="btn ghost" @click="searchBooks">查询</button>
+        <button class="btn ghost" @click="resetSearch">重置</button>
+        <span class="flex-1"></span>
+        <button class="btn primary" @click="openCreate">＋ 新增图书</button>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-id">ID</th>
+              <th class="col-isbn">ISBN</th>
+              <th>书名</th>
+              <th class="col-author">作者</th>
+              <th class="col-publisher">出版社</th>
+              <th class="col-category">分类</th>
+              <th class="col-price">定价</th>
+              <th class="col-stock">在库</th>
+              <th class="col-ops">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loading">
+              <td colspan="9" class="state">加载中…</td>
+            </tr>
+            <tr v-else-if="!books.length">
+              <td colspan="9" class="state">
+                <div class="state-icon">🗂️</div>
+                没有符合条件的图书
+              </td>
+            </tr>
+            <tr v-for="book in books" :key="book.id">
+              <td class="dim">{{ book.id }}</td>
+              <td class="mono">{{ book.isbn }}</td>
+              <td class="strong">{{ book.title }}</td>
+              <td>{{ book.author || '—' }}</td>
+              <td>{{ book.publisher || '—' }}</td>
+              <td>{{ book.category || '—' }}</td>
+              <td class="price">￥{{ Number(book.price).toFixed(2) }}</td>
+              <td>
+                <span v-if="book.stock > 0" class="stock-num">{{ book.stock }}</span>
+                <span v-else class="tag danger">缺书</span>
+              </td>
+              <td class="ops">
+                <button class="link" @click="openEdit(book)">编辑</button>
+                <button class="link" @click="openBorrow(book)">借阅</button>
+                <button class="link danger" @click="removeBook(book)">删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <button class="btn ghost sm" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+        <span class="pager-info">第 {{ page }} / {{ totalPages }} 页　共 {{ total }} 条</span>
+        <button class="btn ghost sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+      </div>
+    </section>
+
+    <!-- 借阅记录 -->
+    <section v-else key="borrows">
+      <div class="toolbar">
+        <label class="checkbox">
+          <input type="checkbox" v-model="onlyUnreturned" @change="loadBorrows">
+          <span>只看未归还</span>
+        </label>
+        <span class="flex-1"></span>
+        <button class="btn ghost" @click="loadBorrows">刷新</button>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-id">ID</th>
+              <th>书名</th>
+              <th class="col-borrower">借阅人</th>
+              <th class="col-date">借出日期</th>
+              <th class="col-date">应还日期</th>
+              <th class="col-date">归还日期</th>
+              <th class="col-status">状态</th>
+              <th class="col-ops">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="!borrows.length">
+              <td colspan="8" class="state">
+                <div class="state-icon">📭</div>
+                暂无借阅记录
+              </td>
+            </tr>
+            <tr v-for="item in borrows" :key="item.id">
+              <td class="dim">{{ item.id }}</td>
+              <td class="strong">{{ item.book_title }}</td>
+              <td>{{ item.borrower }}</td>
+              <td class="mono">{{ item.borrow_date }}</td>
+              <td class="mono">{{ item.due_date || '—' }}</td>
+              <td class="mono">{{ item.return_date || '—' }}</td>
+              <td>
+                <span class="tag" :class="item.returned ? 'success' : 'info'">
+                  {{ item.returned ? '已归还' : '借阅中' }}
+                </span>
+              </td>
+              <td class="ops">
+                <button v-if="!item.returned" class="link" @click="returnBook(item)">归还</button>
+                <span v-else class="dim">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    </transition>
+    </div>
+  </main>
+
+  <!-- 图书表单弹窗 -->
+  <transition name="fade">
+    <div v-if="dialog.open" class="mask" @click.self="closeDialog">
+      <div class="dialog">
+        <header class="dialog-head">
+          <h2>{{ dialog.title }}</h2>
+          <button class="close" @click="closeDialog">✕</button>
+        </header>
+
+        <div class="dialog-body">
+          <div class="grid">
+            <label class="field">
+              <span>ISBN <b>*</b></span>
+              <input v-model.trim="form.isbn" maxlength="32" placeholder="如 9787020002207">
+            </label>
+            <label class="field">
+              <span>书名 <b>*</b></span>
+              <input v-model.trim="form.title" maxlength="128" placeholder="如 红楼梦">
+            </label>
+            <label class="field">
+              <span>作者</span>
+              <input v-model.trim="form.author" maxlength="64" placeholder="如 曹雪芹">
+            </label>
+            <label class="field">
+              <span>出版社</span>
+              <input v-model.trim="form.publisher" maxlength="64">
+            </label>
+            <label class="field">
+              <span>分类</span>
+              <input v-model.trim="form.category" maxlength="32">
+            </label>
+            <label class="field">
+              <span>定价（元）</span>
+              <input v-model.number="form.price" type="number" step="0.01" min="0">
+            </label>
+            <label class="field">
+              <span>在库数量</span>
+              <input v-model.number="form.stock" type="number" min="0">
+            </label>
+          </div>
+        </div>
+
+        <footer class="dialog-foot">
+          <button class="btn ghost" @click="closeDialog">取消</button>
+          <button class="btn primary" :disabled="saving" @click="submitForm">
+            {{ saving ? '保存中…' : '保存' }}
+          </button>
+        </footer>
+      </div>
+    </div>
+  </transition>
+
+  <!-- 借阅弹窗 -->
+  <transition name="fade">
+    <div v-if="borrowDialog.open" class="mask" @click.self="closeBorrowDialog">
+      <div class="dialog narrow">
+        <header class="dialog-head">
+          <h2>借出图书</h2>
+          <button class="close" @click="closeBorrowDialog">✕</button>
+        </header>
+
+        <div class="dialog-body">
+          <p class="book-name">《{{ borrowDialog.title }}》</p>
+          <label class="field">
+            <span>借阅人 <b>*</b></span>
+            <input v-model.trim="borrowDialog.borrower" maxlength="64"
+                   placeholder="请输入借阅人姓名">
+          </label>
+          <p class="hint">默认借期 30 天，确认后在库数量自动减一。</p>
+        </div>
+
+        <footer class="dialog-foot">
+          <button class="btn ghost" @click="closeBorrowDialog">取消</button>
+          <button class="btn primary" :disabled="saving" @click="submitBorrow">确认借出</button>
+        </footer>
+      </div>
+    </div>
+  </transition>
+
+  <!-- 提示条 -->
+  <transition name="rise">
+    <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
+  </transition>
+
+</script>
+
+<script src="vendor/vue.global.prod.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
