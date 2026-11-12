@@ -16,9 +16,6 @@ Python综合实验用项目
 `type="text/x-template"` 的 `script` 块内，由浏览器原样保留后再交给 Vue 编译，
 这样 `@click`、`:class` 等指令写法不会被 HTML 解析器改写。
 
-`web-legacy/` 保留了一版不依赖任何框架的原生 JavaScript 实现，仅作对照留档，
-不参与实际运行。
-
 配色：界面提供两套浅色主题（浅蓝 / 浅绿），通过 CSS 变量与 `data-theme`
 属性整体换色，顶栏右侧的色点按钮即可切换，选择会记在 `localStorage` 中。
 
